@@ -1,0 +1,3 @@
+#!/bin/bash
+
+g++ -o sudoku -std=c++11  sudoku.cpp
