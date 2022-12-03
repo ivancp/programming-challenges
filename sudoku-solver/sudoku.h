@@ -1,21 +1,86 @@
 #include <iostream>
 #include <vector>
+#include <map>
 #define SIZE 9
 
 using namespace std;
 
 class Sudoku{
 
+    
 	struct Cell{
 		int value = 0;
-		vector<int> possible;
+		map<int,bool> possible;
+        Cell(){
+            clearPossible(true);
+        }
+        void clearPossible(bool flag){
+            for(int i = 1; i <= 9; i++){
+                possible[i] = flag;
+            }
+        }
+        void removePossible(int val){
+            possible[val] = false;
+        }
+        bool setValue(int val){
+            if(possible[val] == true){
+                value = val;
+                clearPossible(false);
+                return true;
+            }
+            return false;
+        }
+
+        vector<Cell*>* relatedRow = nullptr;
+        vector<Cell*>* relatedCol = nullptr;
+        vector<Cell*>* relatedGrp = nullptr;
+        void setRelatedRow(vector<Cell*>* row){
+            relatedRow = row;
+        }
+
+        void setRelatedCol(vector<Cell*>* col){
+            relatedCol = col;
+        }
+
+        void setRelatedGrp(vector<Cell*>* grp){
+            relatedGrp = grp;
+        }
+
 	};
 	typedef Cell* CellPtr;
+    typedef vector<CellPtr>* RowPtr;
+    
 	
-	vector<vector<CellPtr>> rows;
-	vector<vector<CellPtr>> cols;
+	vector<vector<CellPtr>> mRows;
+	vector<vector<CellPtr>> mCols;
 	vector<vector<Cell>> mSudoku;
 	
+    bool insert(int i, int j, int val){
+        
+        if(mSudoku[i][j].setValue(val)){
+            RowPtr row = mSudoku[i][j].relatedRow;
+            if(row != nullptr){
+                for(auto c: *row){
+                    c->removePossible(val);
+                }
+            }
+            RowPtr col = mSudoku[i][j].relatedCol;
+            if(col != nullptr){
+                for(auto c: *col){
+                    c->removePossible(val);
+                }
+            }
+
+            RowPtr grp = mSudoku[i][j].relatedGrp;
+            if(grp != nullptr){
+                for(auto c: *grp){
+                    c->removePossible(val);
+                }
+            }
+            return true;
+        }
+        return false;
+    }
 
 public:
 	Sudoku(){
@@ -24,8 +89,8 @@ public:
 	void init(){
 		for(int i = 0 ; i < SIZE;i++){
 			mSudoku.push_back( vector<Cell>());
-			rows.push_back(vector<CellPtr>());
-			cols.push_back(vector<CellPtr>());
+			mRows.push_back(vector<CellPtr>());
+			mCols.push_back(vector<CellPtr>());
 			for(int j = 0 ; j < SIZE;j++){				
 				mSudoku[i].push_back(Cell());
 			}
@@ -33,8 +98,10 @@ public:
 
 		for(int i = 0 ; i < SIZE;i++){
 			for(int j = 0 ; j < SIZE;j++){
-				rows[i].push_back(&mSudoku[i][j]);
-				cols[i].push_back(&mSudoku[j][i]);
+				mRows[i].push_back(&mSudoku[i][j]);
+				mCols[i].push_back(&mSudoku[j][i]);
+                mSudoku[i][j].setRelatedRow(&mRows[i]);
+                mSudoku[i][j].setRelatedCol(&mCols[i]);
 			}
 		}
 
@@ -46,10 +113,12 @@ public:
 			for(int j = 0 ; j < SIZE;j++){
 				cin>>c;
 				if(c >= '0' && c <= '9'){
-					mSudoku[i][j].value = c - '0';
-				}else{
-					mSudoku[i][j].value = 0;
+					//mSudoku[i][j].value = c - '0';
+                    insert(i,j,c-'0');
 				}
+                /*else{
+					mSudoku[i][j].value = 0;
+				}*/
 			}
 
 		}
@@ -60,16 +129,30 @@ public:
 		for(int i = 0 ; i < SIZE;i++){
 			for(int j = 0 ; j < SIZE;j++){
 				if(mSudoku[i][j].value)
-					cout<<mSudoku[i][j].value;//((mSudoku[i][j] == 0)?'-' :mSudoku[i][j]);
+					cout<<"    "<<mSudoku[i][j].value<<"    |";
 				else
-					cout<<'-';
+					cout<<"    -    |";
 			}
-			cout<<endl;
+            cout<<endl;
+			for(int j = 0 ; j < SIZE;j++){
+                
+                for(auto possible: mSudoku[i][j].possible){
+                    if(possible.second == true){
+                       cout<< possible.first;
+                    }else{
+                        cout<< " ";
+                    }
+                }
+                
+                cout<<"|";
+			}
+            cout<<"\n------------------------------------------------------------------------------------------\n";
+			
 		}
 		cout<<endl;
 	}
 	void printFromRows(){
-		for(auto i:rows){
+		for(auto i:mRows){
 			for(auto j:i){
 				if(j->value)
 					cout<<j->value;
@@ -81,7 +164,7 @@ public:
 		cout<<endl;
 	}	
 	void printFromCols(){
-		for(auto i:cols){
+		for(auto i:mCols){
 			for(auto j:i){
 				if(j->value)
 					cout<<j->value;

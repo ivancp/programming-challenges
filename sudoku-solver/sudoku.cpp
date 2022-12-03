@@ -4,7 +4,7 @@ int main(){
 	Sudoku sudoku;
 
 	sudoku.read();
-	sudoku.printFromRows();
+	sudoku.print();
 	//sudoku.printFromCols();
 	return 0;
 }
