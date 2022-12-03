@@ -53,6 +53,7 @@ class Sudoku{
 	
 	vector<vector<CellPtr>> mRows;
 	vector<vector<CellPtr>> mCols;
+    vector<vector<CellPtr>> mGrps;
 	vector<vector<Cell>> mSudoku;
 	
     bool insert(int i, int j, int val){
@@ -60,8 +61,8 @@ class Sudoku{
         if(mSudoku[i][j].setValue(val)){
             RowPtr row = mSudoku[i][j].relatedRow;
             if(row != nullptr){
-                for(auto c: *row){
-                    c->removePossible(val);
+                for(auto r: *row){
+                    r->removePossible(val);
                 }
             }
             RowPtr col = mSudoku[i][j].relatedCol;
@@ -73,8 +74,8 @@ class Sudoku{
 
             RowPtr grp = mSudoku[i][j].relatedGrp;
             if(grp != nullptr){
-                for(auto c: *grp){
-                    c->removePossible(val);
+                for(auto g: *grp){
+                    g->removePossible(val);
                 }
             }
             return true;
@@ -91,20 +92,26 @@ public:
 			mSudoku.push_back( vector<Cell>());
 			mRows.push_back(vector<CellPtr>());
 			mCols.push_back(vector<CellPtr>());
-			for(int j = 0 ; j < SIZE;j++){				
+            mGrps.push_back(vector<CellPtr>());
+			for(int j = 0 ; j < SIZE;j++){
 				mSudoku[i].push_back(Cell());
 			}
 		}
 
 		for(int i = 0 ; i < SIZE;i++){
+            //cout<<"i:"<<(int(i/3))<<endl;
 			for(int j = 0 ; j < SIZE;j++){
 				mRows[i].push_back(&mSudoku[i][j]);
 				mCols[i].push_back(&mSudoku[j][i]);
                 mSudoku[i][j].setRelatedRow(&mRows[i]);
-                mSudoku[i][j].setRelatedCol(&mCols[i]);
+                mSudoku[j][i].setRelatedCol(&mCols[i]);
+
+				int group = (int(j/3)) + (int(i/3))*3;
+				mGrps[group].push_back(&mSudoku[i][j]);
+				mSudoku[i][j].setRelatedGrp(&mGrps[group]);
+				//cout<<"i,j:"<<i<<","<<j<<" ->"<<(int(j/3)) + (int(i/3))*3<<endl;
 			}
 		}
-
 	}
 	void read(){
 		//char line[9];
