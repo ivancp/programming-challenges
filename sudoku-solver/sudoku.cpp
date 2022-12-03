@@ -5,6 +5,7 @@ int main(){
 
 	sudoku.read();
 	sudoku.print();
-	//sudoku.printFromCols();
+	sudoku.solve();
+    sudoku.print();
 	return 0;
 }

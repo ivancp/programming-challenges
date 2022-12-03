@@ -1,31 +1,43 @@
 #include <iostream>
 #include <vector>
-#include <map>
+
 #define SIZE 9
 
 using namespace std;
 
 class Sudoku{
 
+	struct POS{
+		int i;
+		int j;
+	};
     
-	struct Cell{
+	class Cell{
+	 public:
 		int value = 0;
-		map<int,bool> possible;
-        Cell(){
-            clearPossible(true);
+		POS pos;
+		vector<int> possible;
+        Cell(int i, int j){
+			pos.i = i;
+			pos.j = j;
+            for(int v = 1 ; v <= 9;v++){
+				possible.push_back(v);
+			}
         }
-        void clearPossible(bool flag){
-            for(int i = 1; i <= 9; i++){
-                possible[i] = flag;
-            }
+        void clearPossible(){
+            possible.clear();
         }
-        void removePossible(int val){
-            possible[val] = false;
+        int removePossible(int val){
+			//if ( std::find(possible.begin(), possible.end(), val) != possible.end() ){
+				possible.erase(std::remove(possible.begin(), possible.end(), val),possible.end());
+			//}
+			return possible.size();
         }
+
         bool setValue(int val){
-            if(possible[val] == true){
+            if(std::find(possible.begin(), possible.end(), val) != possible.end()){
                 value = val;
-                clearPossible(false);
+                clearPossible();
                 return true;
             }
             return false;
@@ -56,26 +68,38 @@ class Sudoku{
     vector<vector<CellPtr>> mGrps;
 	vector<vector<Cell>> mSudoku;
 	
+
+	vector<POS> checkStack;
+
     bool insert(int i, int j, int val){
-        
+        int pos = 0;
         if(mSudoku[i][j].setValue(val)){
             RowPtr row = mSudoku[i][j].relatedRow;
             if(row != nullptr){
                 for(auto r: *row){
-                    r->removePossible(val);
+                    if(r->removePossible(val) == 1){
+						cout<<"Found 1 in row"<<i<<","<<j<<" after remove "<<val<<" leaved "<<r->possible[0]<<endl;
+						checkStack.push_back(r->pos);
+					}
                 }
             }
             RowPtr col = mSudoku[i][j].relatedCol;
             if(col != nullptr){
                 for(auto c: *col){
-                    c->removePossible(val);
+                    if(c->removePossible(val) == 1){
+						cout<<"Found 1 in col"<<i<<","<<j<<" after remove "<<val<<" leaved "<<c->possible[0]<<endl;
+						checkStack.push_back(c->pos);
+					}
                 }
             }
 
             RowPtr grp = mSudoku[i][j].relatedGrp;
             if(grp != nullptr){
                 for(auto g: *grp){
-                    g->removePossible(val);
+                    if(g->removePossible(val) == 1){
+						cout<<"Found 1 in grp"<<i<<","<<j<<" after remove "<<val<<" leaved "<<g->possible[0]<<endl;
+						checkStack.push_back(g->pos);
+					}
                 }
             }
             return true;
@@ -87,6 +111,20 @@ public:
 	Sudoku(){
 		init();
 	}
+
+	void solve(){
+		while(checkStack.size() > 0){
+
+			POS p = checkStack[0];
+			CellPtr cell = &mSudoku[p.i][p.j];
+			cout<<"checking "<<cell->possible[0]<<" in "<<p.i<<","<<p.j<<endl;
+			if(cell->possible.size() == 1){
+				cout<<" inserting "<<cell->possible[0]<<" in "<<p.i<<","<<p.j<<endl;
+				insert(p.i,p.j,cell->possible[0]);
+			}
+			checkStack.erase(checkStack.begin());
+		}
+	}
 	void init(){
 		for(int i = 0 ; i < SIZE;i++){
 			mSudoku.push_back( vector<Cell>());
@@ -94,7 +132,7 @@ public:
 			mCols.push_back(vector<CellPtr>());
             mGrps.push_back(vector<CellPtr>());
 			for(int j = 0 ; j < SIZE;j++){
-				mSudoku[i].push_back(Cell());
+				mSudoku[i].push_back(Cell(i,j));
 			}
 		}
 
@@ -144,12 +182,11 @@ public:
 			for(int j = 0 ; j < SIZE;j++){
                 
                 for(auto possible: mSudoku[i][j].possible){
-                    if(possible.second == true){
-                       cout<< possible.first;
-                    }else{
-                        cout<< " ";
-                    }
+                    cout<< possible;
                 }
+				for(int s = 0; s < 9-mSudoku[i][j].possible.size();s++){
+					cout<<" ";
+				}
                 
                 cout<<"|";
 			}
