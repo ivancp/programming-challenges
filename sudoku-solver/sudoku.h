@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <map>
 
 #define SIZE 9
 
@@ -11,7 +12,8 @@ class Sudoku{
 		int i;
 		int j;
 	};
-    
+    struct UNIQUE;
+	typedef UNIQUE* UNIQUEPtr;
 	class Cell{
 	 public:
 		int value = 0;
@@ -35,7 +37,7 @@ class Sudoku{
         }
 
         bool setValue(int val){
-            if(std::find(possible.begin(), possible.end(), val) != possible.end()){
+            if(isValueMissing(val)){
                 value = val;
                 clearPossible();
                 return true;
@@ -43,18 +45,25 @@ class Sudoku{
             return false;
         }
 
-        vector<Cell*>* relatedRow = nullptr;
-        vector<Cell*>* relatedCol = nullptr;
-        vector<Cell*>* relatedGrp = nullptr;
-        void setRelatedRow(vector<Cell*>* row){
+		bool isValueMissing(int val){
+			if(std::find(possible.begin(), possible.end(), val) != possible.end()){
+				return true;
+			}
+			return false;
+		}
+
+        UNIQUEPtr relatedRow = nullptr;
+        UNIQUEPtr relatedCol = nullptr;
+        UNIQUEPtr relatedGrp = nullptr;
+        void setRelatedRow(UNIQUEPtr row){
             relatedRow = row;
         }
 
-        void setRelatedCol(vector<Cell*>* col){
+        void setRelatedCol(UNIQUEPtr col){
             relatedCol = col;
         }
 
-        void setRelatedGrp(vector<Cell*>* grp){
+        void setRelatedGrp(UNIQUEPtr grp){
             relatedGrp = grp;
         }
 
@@ -62,45 +71,62 @@ class Sudoku{
 	typedef Cell* CellPtr;
     typedef vector<CellPtr>* RowPtr;
     
+
+	struct UNIQUE{
+		vector<CellPtr> mCells;
+		map<int,double> probably;
+		Cell missing;
+		bool solved;
+		UNIQUE():missing(0,0){
+			solved = false;
+		}
+
+		void addCell(CellPtr ptr){
+			mCells.push_back(ptr);
+		}
+	};
 	
-	vector<vector<CellPtr>> mRows;
-	vector<vector<CellPtr>> mCols;
-    vector<vector<CellPtr>> mGrps;
+	vector<UNIQUE> mRows;
+	vector<UNIQUE> mCols;
+    vector<UNIQUE> mGrps;
 	vector<vector<Cell>> mSudoku;
-	
 
 	vector<POS> checkStack;
 
     bool insert(int i, int j, int val){
         int pos = 0;
         if(mSudoku[i][j].setValue(val)){
-            RowPtr row = mSudoku[i][j].relatedRow;
+			cout<<" inserted "<<val<<" in "<<i<<","<<j<<endl;
+            UNIQUEPtr row = mSudoku[i][j].relatedRow;
             if(row != nullptr){
-                for(auto r: *row){
+                for(auto r: row->mCells){
                     if(r->removePossible(val) == 1){
 						cout<<"Found 1 in row"<<i<<","<<j<<" after remove "<<val<<" leaved "<<r->possible[0]<<endl;
 						checkStack.push_back(r->pos);
 					}
                 }
+				row->missing.removePossible(val);
             }
-            RowPtr col = mSudoku[i][j].relatedCol;
+            UNIQUEPtr col = mSudoku[i][j].relatedCol;
             if(col != nullptr){
-                for(auto c: *col){
+                for(auto c: col->mCells){
                     if(c->removePossible(val) == 1){
 						cout<<"Found 1 in col"<<i<<","<<j<<" after remove "<<val<<" leaved "<<c->possible[0]<<endl;
 						checkStack.push_back(c->pos);
 					}
                 }
+				col->missing.removePossible(val);
             }
 
-            RowPtr grp = mSudoku[i][j].relatedGrp;
+            UNIQUEPtr grp = mSudoku[i][j].relatedGrp;
             if(grp != nullptr){
-                for(auto g: *grp){
+                for(auto g: grp->mCells){
                     if(g->removePossible(val) == 1){
 						cout<<"Found 1 in grp"<<i<<","<<j<<" after remove "<<val<<" leaved "<<g->possible[0]<<endl;
 						checkStack.push_back(g->pos);
 					}
                 }
+				grp->missing.removePossible(val);
             }
             return true;
         }
@@ -119,33 +145,66 @@ public:
 			CellPtr cell = &mSudoku[p.i][p.j];
 			cout<<"checking "<<cell->possible[0]<<" in "<<p.i<<","<<p.j<<endl;
 			if(cell->possible.size() == 1){
-				cout<<" inserting "<<cell->possible[0]<<" in "<<p.i<<","<<p.j<<endl;
+				
 				insert(p.i,p.j,cell->possible[0]);
 			}
 			checkStack.erase(checkStack.begin());
 		}
 	}
+	void find1Missing(){
+		find1Missing(mRows);
+		find1Missing(mCols);
+		find1Missing(mGrps);
+	}
+
+	void find1Missing(vector<UNIQUE> cells){
+		for(auto row: cells){
+			for(auto number: row.missing.possible){
+				int count = 0;
+				CellPtr currCell = nullptr;
+				for(auto cell: row.mCells){
+					if(cell->isValueMissing(number)){
+						currCell = cell;
+						count++;
+					}
+					if(count > 1){
+						break;
+					}
+				}
+				if(count == 1 && currCell != nullptr){ //found just one missing
+					cout<<" Found "<<number<<" missing "<<endl;
+					insert(currCell->pos.i,currCell->pos.j,number);
+					//currCell->setValue(number);
+				}
+			}
+		}
+	}
+
 	void init(){
+
+		//init all 9x9 cells
 		for(int i = 0 ; i < SIZE;i++){
+			//init rows,cols, groups, first time
+			mRows.push_back(UNIQUE());
+			mCols.push_back(UNIQUE());
+            mGrps.push_back(UNIQUE());
+
 			mSudoku.push_back( vector<Cell>());
-			mRows.push_back(vector<CellPtr>());
-			mCols.push_back(vector<CellPtr>());
-            mGrps.push_back(vector<CellPtr>());
 			for(int j = 0 ; j < SIZE;j++){
 				mSudoku[i].push_back(Cell(i,j));
 			}
 		}
 
 		for(int i = 0 ; i < SIZE;i++){
-            //cout<<"i:"<<(int(i/3))<<endl;
+
 			for(int j = 0 ; j < SIZE;j++){
-				mRows[i].push_back(&mSudoku[i][j]);
-				mCols[i].push_back(&mSudoku[j][i]);
+				mRows[i].addCell(&mSudoku[i][j]);
+				mCols[i].addCell(&mSudoku[j][i]);
                 mSudoku[i][j].setRelatedRow(&mRows[i]);
                 mSudoku[j][i].setRelatedCol(&mCols[i]);
 
 				int group = (int(j/3)) + (int(i/3))*3;
-				mGrps[group].push_back(&mSudoku[i][j]);
+				mGrps[group].addCell(&mSudoku[i][j]);
 				mSudoku[i][j].setRelatedGrp(&mGrps[group]);
 				//cout<<"i,j:"<<i<<","<<j<<" ->"<<(int(j/3)) + (int(i/3))*3<<endl;
 			}
@@ -197,7 +256,7 @@ public:
 	}
 	void printFromRows(){
 		for(auto i:mRows){
-			for(auto j:i){
+			for(auto j:i.mCells){
 				if(j->value)
 					cout<<j->value;
 				else
@@ -209,7 +268,7 @@ public:
 	}	
 	void printFromCols(){
 		for(auto i:mCols){
-			for(auto j:i){
+			for(auto j:i.mCells){
 				if(j->value)
 					cout<<j->value;
 				else
